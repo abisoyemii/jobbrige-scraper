@@ -46,7 +46,7 @@ async function start() {
         cleanJobs.filter(job => job.source === "Jobberman").length
     );
 
-    saveJobs(cleanJobs);
+    await saveJobs(cleanJobs);
 
     console.log(`Total JobBridge jobs: ${cleanJobs.length}`);
 }
