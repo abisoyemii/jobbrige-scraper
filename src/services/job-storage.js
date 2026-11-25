@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 async function saveJobs(jobs) {
   const sourceCounts = {};
@@ -18,13 +19,20 @@ async function saveJobs(jobs) {
   fs.writeFileSync(filePath, JSON.stringify(jobs, null, 2));
   console.log(`Saved ${jobs.length} jobs to jobs.json`);
 
-  // NEW: Send to live site API
+  // NEW: Fix IDs to UUIDs for API
+  const jobsForApi = jobs.map(job => ({
+    ...job,
+    externalId: job.id, // keep original id
+    id: crypto.randomUUID(), // backend wants UUID
+  }));
+
+  // Send to live site API
   try {
     console.log("Sending jobs to API...");
     const res = await fetch("https://api.careernova.ng/api/jobs/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobs })
+      body: JSON.stringify({ jobs: jobsForApi })
     });
     console.log("API Response:", res.status, await res.text());
   } catch (err) {
