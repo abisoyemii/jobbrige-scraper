@@ -14,27 +14,33 @@ async function saveJobs(jobs) {
   console.log("TOTAL JOBS:", jobs.length);
   console.log("================================");
 
-  // Keep the file backup
   const filePath = path.join(__dirname, "../../jobs.json");
   fs.writeFileSync(filePath, JSON.stringify(jobs, null, 2));
   console.log(`Saved ${jobs.length} jobs to jobs.json`);
 
-  // NEW: Fix IDs to UUIDs for API
-  const jobsForApi = jobs.map(job => ({
+  // ONLY FIRST 500 FOR NOW
+  const jobsToSend = jobs.slice(0, 500);
+
+  const jobsForApi = jobsToSend.map(job => ({
     ...job,
-    externalId: job.id, // keep original id
-    id: crypto.randomUUID(), // backend wants UUID
+    externalId: job.id,
+    id: crypto.randomUUID(),
   }));
 
-  // Send to live site API
+  // Send in batches of 50
   try {
-    console.log("Sending jobs to API...");
-    const res = await fetch("https://api.careernova.ng/api/jobs/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobs: jobsForApi })
-    });
-    console.log("API Response:", res.status, await res.text());
+    console.log(`Sending ${jobsForApi.length} jobs to API in batches...`);
+    const BATCH = 50;
+    for (let i = 0; i < jobsForApi.length; i += BATCH) {
+      const chunk = jobsForApi.slice(i, i + BATCH);
+      console.log(`Sending batch ${i / BATCH + 1} - ${chunk.length} jobs...`);
+      const res = await fetch("https://api.careernova.ng/api/jobs/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobs: chunk })
+      });
+      console.log(`Batch ${i / BATCH + 1} API Response:`, res.status, await res.text());
+    }
   } catch (err) {
     console.log("API send failed:", err.message);
   }
