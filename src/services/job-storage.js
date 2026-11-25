@@ -1,35 +1,35 @@
 const fs = require("fs");
 const path = require("path");
 
-function saveJobs(jobs) {
+async function saveJobs(jobs) {
+  const sourceCounts = {};
+  jobs.forEach(job => {
+    const source = job.source || "Unknown";
+    sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+  });
 
-    // ===== Job Summary =====
-    const sourceCounts = {};
+  console.log("\n========== JOB SUMMARY ==========");
+  console.table(sourceCounts);
+  console.log("TOTAL JOBS:", jobs.length);
+  console.log("================================");
 
-    jobs.forEach(job => {
-        const source = job.source || "Unknown";
-        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+  // Keep the file backup
+  const filePath = path.join(__dirname, "../../jobs.json");
+  fs.writeFileSync(filePath, JSON.stringify(jobs, null, 2));
+  console.log(`Saved ${jobs.length} jobs to jobs.json`);
+
+  // NEW: Send to live site API
+  try {
+    console.log("Sending jobs to API...");
+    const res = await fetch("https://api.careernova.ng/api/jobs/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobs })
     });
-
-    console.log("\n========== JOB SUMMARY ==========");
-    console.table(sourceCounts);
-    console.log("TOTAL JOBS:", jobs.length);
-    console.log("=================================\n");
-
-    const filePath = path.join(
-        __dirname,
-        "../../jobs.json"
-    );
-
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(jobs, null, 2)
-    );
-
-    console.log(
-        `Saved ${jobs.length} jobs to jobs.json`
-    );
-
+    console.log("API Response:", res.status, await res.text());
+  } catch (err) {
+    console.log("API send failed:", err.message);
+  }
 }
 
 module.exports = saveJobs;
